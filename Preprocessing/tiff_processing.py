@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """TIFF_Processing.ipynb
 
-
-
 # **Code for Extracting B-Scans from 3D OCT Scans**
 """
 
@@ -10,15 +8,11 @@
 !pip install -q tifffile ipywidgets
 
 #Imports
-from google.colab import drive
 import os
 import tifffile as tiff
 import matplotlib.pyplot as plt
 import ipywidgets as widgets
 from IPython.display import display
-
-#Mounting Google Drive
-drive.mount('/content/drive')
 
 #Definining OCT Viewer Class
 class OCTViewer:
