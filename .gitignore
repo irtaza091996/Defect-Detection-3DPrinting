@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Large model files (if not using Git LFS)
+*.pth
+*.onnx
+
+# Data
+*.tiff
+*.tif
+data/
