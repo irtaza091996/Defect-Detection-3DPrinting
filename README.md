@@ -4,7 +4,7 @@ Deep learning-based defect detection in Optical Coherence Tomography (OCT)
 B-scans of 3D-printed samples using U-Net and DeepLabv3+ segmentation models.
 
 Developed as part of a Master's Thesis at TU Dresden,
-Faculty of Mechanical Science and Engineering (May 2025).
+Faculty of Mechanical Science and Engineering.
 
 ---
 
