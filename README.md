@@ -10,20 +10,28 @@ Faculty of Mechanical Science and Engineering.
 
 ## Overview
 
-This project develops AI solutions to monitor additive extrusion (FDM)
-processes in real time. OCT B-scans of printed samples are segmented using
-two deep learning architectures to classify pixels into three classes:
-- Background
-- Edge Artifacts (surface defects)
-- Internal Defects (voids)
+Additive manufacturing (FDM/extrusion) processes are prone to defects such as
+internal voids and surface artifacts that compromise structural integrity. Manual
+inspection of OCT scan data is impractical at scale, so this project develops an
+automated AI pipeline that performs **real-time, pixel-level semantic segmentation**
+of OCT B-scans to classify each pixel into one of three classes:
+
+| Class | Colour in output | Description |
+|---|---|---|
+| Background | Black | Everything outside the printed material |
+| Edge Artifacts | Green | Surface-layer scattering at the print boundary |
+| Internal Defects | Red | Voids inside the printed structure |
+
+The segmentation output is designed to feed a **closed-loop feedback controller**
+that can pause or adjust the 3D printer in real time when defects are detected —
+saving material cost and print time.
 
 <img width="370" height="200" alt="image" src="https://github.com/user-attachments/assets/c399137f-44e0-439b-b787-3c2edb4fdb53" />
 
 ---
 
-The figure below illustrates the end-to-end pipeline — from OCT
-scanning and data preprocessing to model training, evaluation,
-and real-time defect feedback.
+The figure below illustrates the end-to-end pipeline — from OCT scanning and data
+preprocessing to model training, evaluation, and real-time defect feedback.
 
 <img width="905" height="472" alt="image" src="https://github.com/user-attachments/assets/970848bb-bd7b-4772-a96b-c7eecfce2c33" />
 
@@ -31,25 +39,28 @@ and real-time defect feedback.
 
 ## Results Summary
 
-### Segmentation Metrics
+### Segmentation Metrics (per class)
 
-| Model      | Class           | Dice | IoU  | Precision | Recall |
-|------------|-----------------|------|------|-----------|--------|
-| U-Net      | Background      | 0.98 | 0.96 | 0.98      | 0.98   |
-| U-Net      | Edge Artifacts  | 0.94 | 0.89 | 0.95      | 0.93   |
-| U-Net      | Internal Defects| 0.90 | 0.82 | 0.92      | 0.90   |
-| DeepLabv3+ | Background      | 0.96 | 0.93 | 0.96      | 0.96   |
-| DeepLabv3+ | Edge Artifacts  | 0.91 | 0.84 | 0.91      | 0.91   |
-| DeepLabv3+ | Internal Defects| 0.86 | 0.75 | 0.88      | 0.86   |
+| Model | Class | Precision | Recall | Dice | Accuracy |
+|---|---|---|---|---|---|
+| U-Net *(overall ~96%)* | Background | 1.00 | 1.00 | 1.00 | 0.99 |
+| | Edge Artifacts | 0.97 | 0.97 | 0.97 | 0.91 |
+| | Internal Defects | 0.92 | 0.90 | 0.91 | 0.91 |
+| DeepLabv3+ *(overall ~94%)* | Background | 1.00 | 1.00 | 1.00 | 0.98 |
+| | Edge Artifacts | 0.96 | 0.95 | 0.95 | 0.90 |
+| | Internal Defects | 0.88 | 0.86 | 0.87 | 0.89 |
 
 ### Inference Speed
 
-| Model      | Avg. Time / Image | FPS   |
-|------------|-------------------|-------|
-| U-Net      | ~0.005 s          | ~200  |
-| DeepLabv3+ | ~0.008 s          | ~125  |
+| Model | Avg. Time / Image | FPS | Convergence |
+|---|---|---|---|
+| U-Net | 0.0048 s | ~208 | Epoch 16 |
+| DeepLabv3+ | 0.0046 s | ~217 | Epoch 29 |
 
 Both models run well above the real-time threshold (≥25 FPS) on a single GPU.
+DeepLabv3+ is ~3–4% faster at inference, but U-Net converges faster and achieves
+better defect detection accuracy — making **U-Net the recommended choice** for
+critical AM quality-control environments.
 
 U-Net Training:
 
@@ -73,6 +84,7 @@ Inference Test on Unseen Data:
 
 ```
 ├── src/
+│   ├── config.py            # Central constants (model params, class names, colours)
 │   ├── dataset.py           # OCTSegmentationDataset class and load_dataset()
 │   └── utils.py             # Shared utilities: metrics, plotting, mask decoding
 ├── Preprocessing/
@@ -96,7 +108,7 @@ Inference Test on Unseen Data:
 ### Requirements
 
 - Python 3.10+
-- CUDA-capable GPU recommended (CPU fallback supported)
+- CUDA-capable GPU recommended (models were trained on NVIDIA A100 80 GB via Google Colab; CPU fallback is supported but slow)
 
 ### 1. Clone the repository
 
@@ -137,59 +149,80 @@ python Preprocessing/preprocessing.py --data-dir /path/to/Data
 ### Step 3 — Train a Model
 
 ```bash
-# U-Net
+# U-Net (early-stopped at epoch 16 in the original experiments)
 python Models/U-Net/u_net.py --data-dir /path/to/Data --epochs 20
 
-# DeepLabV3+
-python "Models/DeepLabv3Plus/deeplabv3plus.py" --data-dir /path/to/Data --epochs 30
+# DeepLabV3+ (early-stopped at epoch 29 in the original experiments)
+python Models/DeepLabv3Plus/deeplabv3plus.py --data-dir /path/to/Data --epochs 30
 ```
 
-All hyperparameters (`--lr`, `--batch-size`, `--patience`, `--save-path`) are configurable via CLI flags. Run with `--help` for the full list.
+All hyperparameters (`--lr`, `--batch-size`, `--patience`, `--num-workers`, `--save-path`) are configurable via CLI flags. Run with `--help` for the full list.
 
 ### Step 4 — Run Inference
 
 ```bash
-python inference/inference_test.py" \
+python inference/inference_test.py \
     --test-dir Test/ \
     --unet-weights    Models/U-Net/Weights_U-Net.pth \
-    --deeplab-weights "Models/DeepLabv3Plus/Weights_Deeplabv3+.pth"
+    --deeplab-weights Models/DeepLabv3Plus/Weights_Deeplabv3+.pth
 ```
 
 ---
 
 ## Dataset
 
-9 printed samples were scanned using OCT, yielding 8,131 grayscale B-scans
-with corresponding multi-class segmentation masks. 80/20 train/validation split.
+9 printed samples were scanned using OCT, yielding 8,131 grayscale B-scans with
+corresponding multi-class segmentation masks. 80/20 train/validation split.
 
-The dataset is not publicly available. Contact the author for access inquiries.
+**The dataset is not publicly available.** Contact the author for access inquiries.
 
-| Sample        | B-Scans | Width × Height (px) |
-|---------------|---------|----------------------|
-| A-09_1_layer  | 999     | 260 × 131            |
-| A-09_2_layer  | 999     | 317 × 158            |
-| A-09_3_layer  | 999     | 281 × 177            |
-| T-16_1_layer  | 998     | 295 × 138            |
-| T-16_2_layer  | 999     | 305 × 174            |
-| T-16_3_layer  | 998     | 271 × 220            |
-| X5Y4_1_layer  | 714     | 295 × 140            |
-| X5Y4_2_layer  | 714     | 303 × 150            |
-| X5Y4_3_layer  | 711     | 305 × 187            |
+| Sample | B-Scans | Width × Height (px) | Material |
+|---|---|---|---|
+| A-09_1_layer | 999 | 260 × 131 | PA12 |
+| A-09_2_layer | 999 | 317 × 158 | PA12 |
+| A-09_3_layer | 999 | 281 × 177 | PA12 |
+| T-16_1_layer | 998 | 295 × 138 | PA12 |
+| T-16_2_layer | 999 | 305 × 174 | PA12 |
+| T-16_3_layer | 998 | 271 × 220 | PA12 |
+| X5Y4_1_layer | 714 | 295 × 140 | Raise3D PLA Red |
+| X5Y4_2_layer | 714 | 303 × 150 | Raise3D PLA Red |
+| X5Y4_3_layer | 711 | 305 × 187 | Raise3D PLA Red |
+
+Binary outlier maps (used as the basis for ground truth mask generation) were
+produced via statistical methods in a prior study at TU Dresden.
 
 ---
 
 ## Methods
 
-| Component       | Detail                                  |
-|-----------------|-----------------------------------------|
-| Models          | U-Net, DeepLabV3+ (ResNet-18 backbone)  |
-| Input           | Grayscale OCT B-scans, resized 256×320  |
-| Classes         | Background, Edge Artifacts, Defects     |
-| Loss Function   | Cross-Entropy Loss                      |
-| Optimizer       | Adam (LR: 1e-3)                         |
-| LR Scheduler    | ReduceLROnPlateau (factor 0.5, patience 3) |
-| Early Stopping  | Patience 5 epochs                       |
-| Metrics         | Dice, IoU, Precision, Recall, F1        |
+| Component | U-Net | DeepLabv3+ |
+|---|---|---|
+| Encoder backbone | ResNet-18 (no pre-trained weights) | ResNet-18 (no pre-trained weights) |
+| Input | Grayscale OCT B-scans, resized to 256 × 320 px | ← same |
+| Output classes | Background, Edge Artifacts, Internal Defects | ← same |
+| Loss function | Cross-Entropy Loss | ← same |
+| Optimizer | Adam — LR: 1e-3 (tuned via Optuna) | ← same |
+| LR scheduler | ReduceLROnPlateau (factor 0.5, patience 3) | ← same |
+| Batch size | 4 | ← same |
+| Early stopping | Patience 5 | ← same |
+| Actual epochs run | 16 | 29 |
+| Metrics | Dice, IoU, Precision, Recall, Accuracy | ← same |
+| Training hardware | NVIDIA A100 80 GB (Google Colab) | ← same |
+
+> Hyperparameters (learning rate, optimizer, loss function) were selected using
+> **Optuna** Bayesian optimisation. The same ResNet-18 backbone was deliberately
+> chosen for both models to enable a fair comparison.
+
+---
+
+## Future Work
+
+As discussed in the thesis, several directions remain open:
+
+- **3D segmentation** — extend the pipeline from 2D B-scans to full volumetric OCT data for richer spatial context
+- **Additional defect classes** — incorporate cracks, delamination, and thermal distortions (currently only voids and edge artifacts are labelled)
+- **Ground truth quality** — improve the statistical outlier maps (e.g., via semi-supervised learning) to reduce label noise and misclassification
+- **Closed-loop deployment** — integrate the segmentation output with a real-time printer feedback controller to trigger corrective actions automatically
 
 ---
 
@@ -209,4 +242,5 @@ Master's Thesis, TU Dresden, Faculty of Mechanical Science and Engineering, 2025
 ## Author
 
 Muhammad Irtaza Khan
-TU Dresden
+TU Dresden — Faculty of Mechanical Science and Engineering
+muhammad_irtaza.khan@mailbox.tu-dresden.de
