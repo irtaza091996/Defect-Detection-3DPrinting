@@ -138,7 +138,7 @@ python Preprocessing/tiff_processing.py \
     --out-dir  /path/to/output
 ```
 
-<img width="610" height="150" alt="image" src="https://github.com/user-attachments/assets/6473b027-32f9-4790-b16e-8e76a414a3e3" />
+<img width="346" height="150" alt="image" src="https://github.com/user-attachments/assets/0be1a8f1-b9d3-4721-985b-300294bff78b" />
 
 ### Step 2 — Generate Multi-Class Segmentation Masks
 
