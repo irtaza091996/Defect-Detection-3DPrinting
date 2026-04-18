@@ -146,6 +146,8 @@ python Preprocessing/tiff_processing.py \
 python Preprocessing/preprocessing.py --data-dir /path/to/Data
 ```
 
+<img width="590" height="150" alt="image" src="https://github.com/user-attachments/assets/a6192b86-ad65-4aa9-b544-1bfc92ab7bd5" />
+
 ### Step 3 — Train a Model
 
 ```bash
