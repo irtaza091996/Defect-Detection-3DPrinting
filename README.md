@@ -219,10 +219,10 @@ produced via statistical methods in a prior study at TU Dresden.
 
 As discussed in the thesis, several directions remain open:
 
-- **3D segmentation**: extend the pipeline from 2D B-scans to full volumetric OCT data for richer spatial context.
-- **Additional defect classes**: incorporate cracks, delamination, and thermal distortions (currently only voids and edge artifacts are labelled).
-- **Ground truth quality**: improve the statistical outlier maps (e.g., via semi-supervised learning) to reduce label noise and misclassification.
-- **Closed-loop deployment**: integrate the segmentation output with a real-time printer feedback controller to trigger corrective actions automatically.
+- **3D segmentation**: Extend the pipeline from 2D B-scans to full volumetric OCT data for richer spatial context.
+- **Additional defect classes**: Incorporate cracks, delamination, and thermal distortions (currently only voids and edge artifacts are labelled).
+- **Ground truth quality**: Improve the statistical outlier maps (e.g., via semi-supervised learning) to reduce label noise and misclassification.
+- **Closed-loop deployment**: Integrate the segmentation output with a real-time printer feedback controller to trigger corrective actions automatically.
 
 ---
 
