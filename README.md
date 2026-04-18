@@ -242,5 +242,7 @@ Master's Thesis, TU Dresden, Faculty of Mechanical Science and Engineering, 2025
 ## Author
 
 Muhammad Irtaza Khan
-TU Dresden — Faculty of Mechanical Science and Engineering
+
+TU Dresden - Faculty of Mechanical Science and Engineering
+
 muhammad_irtaza.khan@mailbox.tu-dresden.de
