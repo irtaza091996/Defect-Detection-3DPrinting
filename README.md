@@ -23,14 +23,14 @@ of OCT B-scans to classify each pixel into one of three classes:
 | Internal Defects | Red | Voids inside the printed structure |
 
 The segmentation output is designed to feed a **closed-loop feedback controller**
-that can pause or adjust the 3D printer in real time when defects are detected —
+that can pause or adjust the 3D printer in real time when defects are detected, thus
 saving material cost and print time.
 
 <img width="370" height="200" alt="image" src="https://github.com/user-attachments/assets/c399137f-44e0-439b-b787-3c2edb4fdb53" />
 
 ---
 
-The figure below illustrates the end-to-end pipeline — from OCT scanning and data
+The figure below illustrates the end-to-end pipeline, from OCT scanning and data
 preprocessing to model training, evaluation, and real-time defect feedback.
 
 <img width="905" height="472" alt="image" src="https://github.com/user-attachments/assets/970848bb-bd7b-4772-a96b-c7eecfce2c33" />
@@ -59,7 +59,7 @@ preprocessing to model training, evaluation, and real-time defect feedback.
 
 Both models run well above the real-time threshold (≥25 FPS) on a single GPU.
 DeepLabv3+ is ~3-4% faster at inference, but U-Net converges faster and achieves
-better defect detection accuracy — making **U-Net the recommended choice** for
+better defect detection accuracy, thus making **U-Net the recommended choice** for
 critical AM quality-control environments.
 
 U-Net Training:
@@ -219,10 +219,10 @@ produced via statistical methods in a prior study at TU Dresden.
 
 As discussed in the thesis, several directions remain open:
 
-- **3D segmentation** — extend the pipeline from 2D B-scans to full volumetric OCT data for richer spatial context
-- **Additional defect classes** — incorporate cracks, delamination, and thermal distortions (currently only voids and edge artifacts are labelled)
-- **Ground truth quality** — improve the statistical outlier maps (e.g., via semi-supervised learning) to reduce label noise and misclassification
-- **Closed-loop deployment** — integrate the segmentation output with a real-time printer feedback controller to trigger corrective actions automatically
+- **3D segmentation**: extend the pipeline from 2D B-scans to full volumetric OCT data for richer spatial context.
+- **Additional defect classes**: incorporate cracks, delamination, and thermal distortions (currently only voids and edge artifacts are labelled).
+- **Ground truth quality**: improve the statistical outlier maps (e.g., via semi-supervised learning) to reduce label noise and misclassification.
+- **Closed-loop deployment**: integrate the segmentation output with a real-time printer feedback controller to trigger corrective actions automatically.
 
 ---
 
@@ -245,4 +245,4 @@ Muhammad Irtaza Khan
 
 TU Dresden - Faculty of Mechanical Science and Engineering
 
-muhammad_irtaza.khan@mailbox.tu-dresden.de
+
