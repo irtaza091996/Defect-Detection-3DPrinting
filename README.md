@@ -58,7 +58,7 @@ preprocessing to model training, evaluation, and real-time defect feedback.
 | DeepLabv3+ | 0.0046 s | ~217 | Epoch 29 |
 
 Both models run well above the real-time threshold (≥25 FPS) on a single GPU.
-DeepLabv3+ is ~3–4% faster at inference, but U-Net converges faster and achieves
+DeepLabv3+ is ~3-4% faster at inference, but U-Net converges faster and achieves
 better defect detection accuracy — making **U-Net the recommended choice** for
 critical AM quality-control environments.
 
