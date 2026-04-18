@@ -1,7 +1,7 @@
 """Train a DeepLabV3+ model on OCT B-scan segmentation data.
 
 Usage:
-    python "Models/DeepLabv3+/deeplabv3plus.py" --data-dir /path/to/Data
+    python Models/DeepLabv3Plus/deeplabv3plus.py --data-dir /path/to/Data
 """
 
 import argparse
@@ -18,6 +18,7 @@ import segmentation_models_pytorch as smp
 
 # Allow imports from the repo root (src/)
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from src.config import ENCODER_NAME, IN_CHANNELS, NUM_CLASSES
 from src.dataset import OCTSegmentationDataset, load_dataset
 from src.utils import (
     compute_metrics,
@@ -31,10 +32,10 @@ from src.utils import (
 
 def build_model(device: torch.device) -> nn.Module:
     return smp.DeepLabV3Plus(
-        encoder_name='resnet18',
+        encoder_name=ENCODER_NAME,
         encoder_weights=None,
-        in_channels=1,
-        classes=3,
+        in_channels=IN_CHANNELS,
+        classes=NUM_CLASSES,
     ).to(device)
 
 
@@ -102,11 +103,11 @@ def train(args):
 
     train_loader = DataLoader(
         OCTSegmentationDataset(train_imgs, train_masks),
-        batch_size=args.batch_size, shuffle=True, num_workers=2,
+        batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers,
     )
     val_loader = DataLoader(
         OCTSegmentationDataset(val_imgs, val_masks),
-        batch_size=args.batch_size, shuffle=False, num_workers=2,
+        batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers,
     )
 
     model = build_model(device)
@@ -149,10 +150,11 @@ def train(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train DeepLabV3+ on OCT B-scans')
-    parser.add_argument('--data-dir', default='/Data', help='Path to dataset root directory')
+    parser.add_argument('--data-dir', required=True, help='Path to dataset root directory')
     parser.add_argument('--save-path', default='Weights_Deeplabv3+.pth', help='Where to save best weights')
     parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--batch-size', type=int, default=4)
     parser.add_argument('--lr', type=float, default=1e-3)
     parser.add_argument('--patience', type=int, default=5)
+    parser.add_argument('--num-workers', type=int, default=2, help='DataLoader worker processes')
     train(parser.parse_args())

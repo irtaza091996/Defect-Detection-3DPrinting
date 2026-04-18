@@ -1,9 +1,9 @@
 """Run inference benchmarking and overlay visualisation for U-Net and DeepLabV3+.
 
 Usage:
-    python "Inference Test/inference_test.py" --test-dir Test/ \
+    python inference/inference_test.py --test-dir Test/ \
         --unet-weights Models/U-Net/Weights_U-Net.pth \
-        --deeplab-weights "Models/DeepLabv3+/Weights_Deeplabv3+.pth"
+        --deeplab-weights Models/DeepLabv3Plus/Weights_Deeplabv3+.pth
 """
 
 import argparse
@@ -21,17 +21,16 @@ import segmentation_models_pytorch as smp
 
 # Allow imports from the repo root (src/)
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.config import ENCODER_NAME, IN_CHANNELS, NUM_CLASSES, TARGET_H, TARGET_W
 from src.utils import decode_segmentation_mask
-
-TARGET_H, TARGET_W = 256, 320
 
 
 def load_models(unet_weights: str, deeplab_weights: str, device: torch.device):
-    unet = smp.Unet('resnet18', encoder_weights=None, in_channels=1, classes=3).to(device)
+    unet = smp.Unet(ENCODER_NAME, encoder_weights=None, in_channels=IN_CHANNELS, classes=NUM_CLASSES).to(device)
     unet.load_state_dict(torch.load(unet_weights, map_location=device))
     unet.eval()
 
-    deeplab = smp.DeepLabV3Plus('resnet18', encoder_weights=None, in_channels=1, classes=3).to(device)
+    deeplab = smp.DeepLabV3Plus(ENCODER_NAME, encoder_weights=None, in_channels=IN_CHANNELS, classes=NUM_CLASSES).to(device)
     deeplab.load_state_dict(torch.load(deeplab_weights, map_location=device))
     deeplab.eval()
 
@@ -138,12 +137,14 @@ def main(args):
     times = benchmark(models, test_images, device)
     print_benchmark_results(times)
     plot_benchmark(times)
-    visualise_prediction(deeplab, test_images[1], device)
+    sample_path = test_images[min(args.sample_idx, len(test_images) - 1)]
+    visualise_prediction(deeplab, sample_path, device)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Inference benchmark for U-Net and DeepLabV3+')
     parser.add_argument('--test-dir', default='Test', help='Directory containing test PNG images')
     parser.add_argument('--unet-weights', default='Models/U-Net/Weights_U-Net.pth')
-    parser.add_argument('--deeplab-weights', default='Models/DeepLabv3+/Weights_Deeplabv3+.pth')
+    parser.add_argument('--deeplab-weights', default='Models/DeepLabv3Plus/Weights_Deeplabv3+.pth')
+    parser.add_argument('--sample-idx', type=int, default=1, help='Index of test image to visualise')
     main(parser.parse_args())

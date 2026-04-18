@@ -7,13 +7,7 @@ import torch
 from sklearn.model_selection import train_test_split
 from torch.utils.data import Dataset
 
-SAMPLES = [
-    'A-09_1_layer', 'A-09_2_layer', 'A-09_3_layer',
-    'T-16_1_layer', 'T-16_2_layer', 'T-16_3_layer',
-    'X5Y4_1_layer', 'X5Y4_2_layer', 'X5Y4_3_layer',
-]
-
-TARGET_H, TARGET_W = 256, 320
+from src.config import SAMPLES, TARGET_H, TARGET_W
 
 
 class OCTSegmentationDataset(Dataset):

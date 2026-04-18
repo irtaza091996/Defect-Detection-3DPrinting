@@ -7,7 +7,7 @@ __pycache__/
 *.pth
 *.onnx
 
-# Data
+# Data (case-insensitive match for both Data/ and data/)
 *.tiff
 *.tif
-data/
+[Dd]ata/

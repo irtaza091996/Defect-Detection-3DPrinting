@@ -10,8 +10,7 @@ from sklearn.metrics import (
     recall_score,
 )
 
-CLASS_NAMES = ['Background', 'Edge Artifacts', 'Defects']
-CLASS_COLORS = {0: [0, 0, 0], 1: [0, 255, 0], 2: [255, 0, 0]}
+from src.config import CLASS_COLORS, CLASS_NAMES, NUM_CLASSES
 
 
 def decode_segmentation_mask(mask: np.ndarray) -> np.ndarray:
@@ -22,7 +21,7 @@ def decode_segmentation_mask(mask: np.ndarray) -> np.ndarray:
     return overlay
 
 
-def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int = 3) -> dict:
+def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray, num_classes: int = NUM_CLASSES) -> dict:
     """Return per-class Dice, IoU, Precision, Recall, and F1."""
     y_true_flat = y_true.flatten()
     y_pred_flat = y_pred.flatten()
@@ -62,7 +61,7 @@ def plot_loss_curves(train_losses: list, val_losses: list) -> None:
 
 
 def plot_confusion_matrix(y_true: np.ndarray, y_pred: np.ndarray) -> None:
-    cm = confusion_matrix(y_true.flatten(), y_pred.flatten(), labels=[0, 1, 2], normalize='true')
+    cm = confusion_matrix(y_true.flatten(), y_pred.flatten(), labels=list(range(NUM_CLASSES)), normalize='true')
     fig, ax = plt.subplots(figsize=(6, 5))
     ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=CLASS_NAMES).plot(
         ax=ax, cmap='Blues', values_format='.2f'

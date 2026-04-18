@@ -80,12 +80,10 @@ Inference Test on Unseen Data:
 │   └── preprocessing.py     # Step 2 — convert binary outlier maps to multi-class masks
 ├── Models/
 │   ├── U-Net/
-│   │   ├── u_net.py         # U-Net training script
-│   │   └── Weights_U-Net.pth
-│   └── DeepLabv3+/
-│       ├── deeplabv3plus.py # DeepLabV3+ training script
-│       └── Weights_Deeplabv3+.pth
-├── Inference Test/
+│   │   └── u_net.py         # U-Net training script
+│   └── DeepLabv3Plus/
+│       └── deeplabv3plus.py # DeepLabV3+ training script
+├── inference/
 │   └── inference_test.py    # Benchmarking and overlay visualisation
 ├── requirements.txt
 └── README.md
@@ -143,7 +141,7 @@ python Preprocessing/preprocessing.py --data-dir /path/to/Data
 python Models/U-Net/u_net.py --data-dir /path/to/Data --epochs 20
 
 # DeepLabV3+
-python "Models/DeepLabv3+/deeplabv3plus.py" --data-dir /path/to/Data --epochs 30
+python "Models/DeepLabv3Plus/deeplabv3plus.py" --data-dir /path/to/Data --epochs 30
 ```
 
 All hyperparameters (`--lr`, `--batch-size`, `--patience`, `--save-path`) are configurable via CLI flags. Run with `--help` for the full list.
@@ -151,10 +149,10 @@ All hyperparameters (`--lr`, `--batch-size`, `--patience`, `--save-path`) are co
 ### Step 4 — Run Inference
 
 ```bash
-python "Inference Test/inference_test.py" \
+python inference/inference_test.py" \
     --test-dir Test/ \
     --unet-weights    Models/U-Net/Weights_U-Net.pth \
-    --deeplab-weights "Models/DeepLabv3+/Weights_Deeplabv3+.pth"
+    --deeplab-weights "Models/DeepLabv3Plus/Weights_Deeplabv3+.pth"
 ```
 
 ---
