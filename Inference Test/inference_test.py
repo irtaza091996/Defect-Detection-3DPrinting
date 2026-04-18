@@ -1,139 +1,149 @@
-# -*- coding: utf-8 -*-
-"""Inference_test.ipynb
+"""Run inference benchmarking and overlay visualisation for U-Net and DeepLabV3+.
 
-# **Inference Test**
-
-**Mounting Google Drive**
+Usage:
+    python "Inference Test/inference_test.py" --test-dir Test/ \
+        --unet-weights Models/U-Net/Weights_U-Net.pth \
+        --deeplab-weights "Models/DeepLabv3+/Weights_Deeplabv3+.pth"
 """
 
-!pip install segmentation-models-pytorch
-
-import os
-import cv2
+import argparse
+import sys
 import time
-import numpy as np
-from glob import glob
-import torch
+from pathlib import Path
+
+import cv2
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from glob import glob
 from tqdm import tqdm
 import segmentation_models_pytorch as smp
 
-#Setup
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-target_h, target_w = 256, 320
+# Allow imports from the repo root (src/)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from src.utils import decode_segmentation_mask
 
-#Loading Models
-unet_model = smp.Unet("resnet18", encoder_weights=None, in_channels=1, classes=3).to(device)
-unet_model.load_state_dict(torch.load("Weights_U-Net.pth", map_location=device))
-unet_model.eval()
+TARGET_H, TARGET_W = 256, 320
 
-deeplab_model = smp.DeepLabV3Plus("resnet18", encoder_weights=None, in_channels=1, classes=3).to(device)
-deeplab_model.load_state_dict(torch.load("Weights_Deeplabv3+.pth", map_location=device))
-deeplab_model.eval()
 
-#Loading Test Images
-test_images = sorted(glob("Test/*.png"))
+def load_models(unet_weights: str, deeplab_weights: str, device: torch.device):
+    unet = smp.Unet('resnet18', encoder_weights=None, in_channels=1, classes=3).to(device)
+    unet.load_state_dict(torch.load(unet_weights, map_location=device))
+    unet.eval()
 
-#Preprocessing
-def preprocess_image(path):
+    deeplab = smp.DeepLabV3Plus('resnet18', encoder_weights=None, in_channels=1, classes=3).to(device)
+    deeplab.load_state_dict(torch.load(deeplab_weights, map_location=device))
+    deeplab.eval()
+
+    return unet, deeplab
+
+
+def preprocess_image(path: str, device: torch.device) -> torch.Tensor:
     img = cv2.imread(path, cv2.IMREAD_GRAYSCALE).astype('float32') / 255.0
-    img = cv2.resize(img, (target_w, target_h), interpolation=cv2.INTER_AREA)
+    img = cv2.resize(img, (TARGET_W, TARGET_H), interpolation=cv2.INTER_AREA)
     return torch.tensor(img).unsqueeze(0).unsqueeze(0).to(device)
 
-with torch.no_grad():
-    dummy = preprocess_image(test_images[0])
-    for _ in range(10):
-        _ = unet_model(dummy)
-        _ = deeplab_model(dummy)
 
-#Inference Timing
-unet_times, deeplab_times = [], []
-print("\n Running inference timing...")
-for path in tqdm(test_images, desc=" Processing Test Images"):
-    img = preprocess_image(path)
+def warmup(models: list, dummy: torch.Tensor, iterations: int = 10):
     with torch.no_grad():
-        start = time.time(); _ = unet_model(img); unet_times.append(time.time() - start)
-        start = time.time(); _ = deeplab_model(img); deeplab_times.append(time.time() - start)
+        for _ in range(iterations):
+            for model in models:
+                model(dummy)
 
-#Report
-avg_unet = np.mean(unet_times)
-avg_deeplab = np.mean(deeplab_times)
-print(f"\n U-Net Avg Time:     {avg_unet:.6f}s/image | FPS: {1/avg_unet:.2f}")
-print(f" DeepLabV3+ Avg Time: {avg_deeplab:.6f}s/image | FPS: {1/avg_deeplab:.2f}")
 
-#Overlay Visualization
-#Decoding mask to RGB
-def decode_segmentation_mask(mask, num_classes=3):
-    colors = {0: [0, 0, 0], 1: [0, 255, 0], 2: [255, 0, 0]}
-    h, w = mask.shape
-    overlay = np.zeros((h, w, 3), dtype=np.uint8)
-    for c in range(num_classes):
-        overlay[mask == c] = colors[c]
-    return overlay
+def benchmark(models: dict, test_images: list, device: torch.device) -> dict:
+    times = {name: [] for name in models}
+    with torch.no_grad():
+        for path in tqdm(test_images, desc='Benchmarking'):
+            img = preprocess_image(path, device)
+            for name, model in models.items():
+                start = time.perf_counter()
+                model(img)
+                times[name].append(time.perf_counter() - start)
+    return times
 
-#Choosing sample image
-sample_img_path = test_images[1]
-original_img = cv2.imread(sample_img_path, cv2.IMREAD_GRAYSCALE)
-orig_h, orig_w = original_img.shape
 
-#Predicting
-image_tensor = preprocess_image(sample_img_path)
-with torch.no_grad():
-    pred_mask = torch.argmax(deeplab_model(image_tensor).squeeze(), dim=0).cpu().numpy()
+def print_benchmark_results(times: dict):
+    print()
+    for name, t in times.items():
+        avg = np.mean(t)
+        print(f'{name:12s}  avg: {avg:.6f}s/image  |  FPS: {1/avg:.2f}')
 
-#Resizing back to original resolution
-pred_mask_resized = cv2.resize(pred_mask.astype(np.uint8), (orig_w, orig_h), interpolation=cv2.INTER_NEAREST)
-overlay_mask = decode_segmentation_mask(pred_mask_resized)
 
-#Overlay
-image_rgb = cv2.cvtColor(original_img, cv2.COLOR_GRAY2RGB)
-blended = cv2.addWeighted(image_rgb, 0.6, overlay_mask, 0.4, 0)
+def plot_benchmark(times: dict):
+    avg_times = {name: np.mean(t) for name, t in times.items()}
+    fps_values = {name: 1.0 / t for name, t in avg_times.items()}
 
-#Displaying
-print(f" Original image size: {orig_w}×{orig_h}")
-plt.figure(figsize=(12, 5))
-plt.subplot(1, 2, 1)
-plt.imshow(image_rgb)
-plt.title("Original B-Scan")
-plt.axis("off")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
 
-plt.subplot(1, 2, 2)
-plt.imshow(blended)
-plt.title("Overlay: Prediction on Original Size")
-plt.axis("off")
-plt.tight_layout()
-plt.show()
+    ax1.bar(avg_times.keys(), avg_times.values(), color=['skyblue', 'orange'])
+    ax1.set_ylabel('Time per Image (s)')
+    ax1.set_title('Inference Time per Image')
+    for i, (name, val) in enumerate(avg_times.items()):
+        ax1.text(i, val + 0.0005, f'{val:.4f}s', ha='center')
 
-import matplotlib.pyplot as plt
-import numpy as np
+    ax2.bar(fps_values.keys(), fps_values.values(), color=['skyblue', 'orange'])
+    ax2.set_ylabel('Frames Per Second (FPS)')
+    ax2.set_title('Inference Speed (FPS)')
+    for i, (name, val) in enumerate(fps_values.items()):
+        ax2.text(i, val + 5, f'{val:.1f} FPS', ha='center')
 
-#Sample timing values
-time_per_image = {
-    "U-Net": avg_unet,
-    "DeepLabV3+": avg_deeplab
-}
+    plt.tight_layout()
+    plt.show()
 
-#Converting to FPS
-fps_values = {model: 1.0 / t for model, t in time_per_image.items()}
 
-#Plotting Time per Image
-plt.figure(figsize=(10, 4))
-plt.subplot(1, 2, 1)
-plt.bar(time_per_image.keys(), time_per_image.values(), color=['skyblue', 'orange'])
-plt.ylabel("Time per Image (seconds)")
-plt.title("Inference Time per Image")
-plt.ylim(0, max(time_per_image.values()) * 1.2)
-for i, val in enumerate(time_per_image.values()):
-    plt.text(i, val + 0.0005, f"{val:.4f}s", ha='center')
+def visualise_prediction(model, sample_path: str, device: torch.device):
+    original = cv2.imread(sample_path, cv2.IMREAD_GRAYSCALE)
+    orig_h, orig_w = original.shape
 
-#Plotting FPS
-plt.subplot(1, 2, 2)
-plt.bar(fps_values.keys(), fps_values.values(), color=['skyblue', 'orange'])
-plt.ylabel("Frames Per Second (FPS)")
-plt.title("Inference Speed (FPS)")
-plt.ylim(0, max(fps_values.values()) * 1.2)
-for i, val in enumerate(fps_values.values()):
-    plt.text(i, val + 5, f"{val:.1f} FPS", ha='center')
+    img_tensor = preprocess_image(sample_path, device)
+    with torch.no_grad():
+        pred_mask = torch.argmax(model(img_tensor).squeeze(), dim=0).cpu().numpy()
 
-plt.tight_layout()
-plt.show()
+    pred_mask_resized = cv2.resize(
+        pred_mask.astype(np.uint8), (orig_w, orig_h), interpolation=cv2.INTER_NEAREST
+    )
+    overlay = decode_segmentation_mask(pred_mask_resized)
+    image_rgb = cv2.cvtColor(original, cv2.COLOR_GRAY2RGB)
+    blended = cv2.addWeighted(image_rgb, 0.6, overlay, 0.4, 0)
+
+    print(f'Original image size: {orig_w}×{orig_h}')
+    plt.figure(figsize=(12, 5))
+    plt.subplot(1, 2, 1)
+    plt.imshow(image_rgb)
+    plt.title('Original B-Scan')
+    plt.axis('off')
+
+    plt.subplot(1, 2, 2)
+    plt.imshow(blended)
+    plt.title('Overlay: Prediction on Original Size')
+    plt.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+
+def main(args):
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    print(f'Using device: {device}')
+
+    unet, deeplab = load_models(args.unet_weights, args.deeplab_weights, device)
+    models = {'U-Net': unet, 'DeepLabV3+': deeplab}
+
+    test_images = sorted(glob(str(Path(args.test_dir) / '*.png')))
+    if not test_images:
+        raise FileNotFoundError(f'No PNG images found in {args.test_dir}')
+
+    warmup(list(models.values()), preprocess_image(test_images[0], device))
+
+    times = benchmark(models, test_images, device)
+    print_benchmark_results(times)
+    plot_benchmark(times)
+    visualise_prediction(deeplab, test_images[1], device)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Inference benchmark for U-Net and DeepLabV3+')
+    parser.add_argument('--test-dir', default='Test', help='Directory containing test PNG images')
+    parser.add_argument('--unet-weights', default='Models/U-Net/Weights_U-Net.pth')
+    parser.add_argument('--deeplab-weights', default='Models/DeepLabv3+/Weights_Deeplabv3+.pth')
+    main(parser.parse_args())
